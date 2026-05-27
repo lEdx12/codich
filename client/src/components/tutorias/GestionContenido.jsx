@@ -1,18 +1,64 @@
 import { useState, useEffect } from 'react'
 import axiosInstance from '../../api/axiosInstance'
 
-const MAX_DESC  = 500
-const MAX_BYTES = 10 * 1024 * 1024
+const MAX_DESC    = 500
+const MAX_BYTES   = 10 * 1024 * 1024
 const FORMATOS_OK = ['application/pdf', 'video/mp4']
+const ESTADOS     = ['borrador', 'activa', 'inactiva']
 
-export default function GestionContenido({ tutoriaId }) {
-  const [tutoria, setTutoria]   = useState(null)
-  const [cargando, setCargando] = useState(true)
-  const [guardando, setGuardando] = useState(false)
-  const [error, setError]       = useState('')
-  const [ok, setOk]             = useState('')
-  const [archivo, setArchivo]   = useState(null)
+function TabInscritos({ tutoriaId }) {
+  const [inscritos, setInscritos] = useState([])
+  const [cargando, setCargando]   = useState(true)
+  const [error, setError]         = useState('')
+
+  useEffect(() => {
+    axiosInstance.get(`/tutorias/${tutoriaId}/inscritos`)
+      .then(({ data }) => setInscritos(data))
+      .catch(() => setError('No se pudo cargar la lista de inscritos.'))
+      .finally(() => setCargando(false))
+  }, [tutoriaId])
+
+  if (cargando) return <p aria-live="polite">Cargando inscritos...</p>
+  if (error)    return <p className="alert alert-error" role="alert">{error}</p>
+
+  return (
+    <div>
+      <p style={{ color: 'var(--color-muted)', fontSize: '.875rem', marginBottom: '1rem' }}>
+        {inscritos.length} alumno{inscritos.length !== 1 ? 's' : ''} inscrito{inscritos.length !== 1 ? 's' : ''}
+      </p>
+      {inscritos.length === 0 ? (
+        <p style={{ color: 'var(--color-muted)' }}>Aún no hay alumnos inscritos en esta tutoría.</p>
+      ) : (
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Nombre</th><th>Correo</th><th>Estado inscripción</th></tr>
+            </thead>
+            <tbody>
+              {inscritos.map(i => (
+                <tr key={i._id}>
+                  <td>{i.usuario?.nombre || '—'}</td>
+                  <td>{i.usuario?.correo || '—'}</td>
+                  <td><span className={`badge ${i.estado === 'activa' ? 'badge-green' : 'badge-yellow'}`}>{i.estado}</span></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  )
+}
+
+export default function GestionContenido({ tutoriaId, onActualizada }) {
+  const [tutoria, setTutoria]           = useState(null)
+  const [cargando, setCargando]         = useState(true)
+  const [guardando, setGuardando]       = useState(false)
+  const [error, setError]               = useState('')
+  const [ok, setOk]                     = useState('')
+  const [archivo, setArchivo]           = useState(null)
   const [errorArchivo, setErrorArchivo] = useState('')
+  const [tab, setTab]                   = useState('editar')
 
   useEffect(() => {
     axiosInstance.get(`/tutorias/${tutoriaId}`)
@@ -47,9 +93,11 @@ export default function GestionContenido({ tutoriaId }) {
       await axiosInstance.put(`/tutorias/${tutoriaId}`, {
         titulo:      tutoria.titulo,
         descripcion: tutoria.descripcion,
+        estado:      tutoria.estado,
       })
       setOk('Cambios guardados correctamente.')
       setArchivo(null)
+      if (onActualizada) onActualizada()
     } catch (err) {
       setError(err.response?.data?.mensaje || 'Error al guardar los cambios.')
     } finally {
@@ -62,40 +110,75 @@ export default function GestionContenido({ tutoriaId }) {
 
   return (
     <section className="card" aria-labelledby="titulo-contenido">
-      <h2 id="titulo-contenido" style={{ marginBottom: '1.5rem' }}>Editar tutoría</h2>
-      {error && <p className="alert alert-error" role="alert">{error}</p>}
-      {ok    && <p className="alert alert-success" role="status">{ok}</p>}
-
-      <form onSubmit={handleGuardar} style={{ maxWidth: 560 }}>
-        <div className="form-group">
-          <label>Título</label>
-          <input name="titulo" value={tutoria.titulo} onChange={handleChange} required maxLength={200} />
-        </div>
-
-        <div className="form-group">
-          <label>Descripción</label>
-          <textarea
-            name="descripcion" value={tutoria.descripcion} onChange={handleChange}
-            maxLength={MAX_DESC} required rows={4} aria-describedby="contador-desc"
-          />
-          <span id="contador-desc" aria-live="polite" style={{ fontSize: '.8rem', color: 'var(--color-muted)' }}>
-            {tutoria.descripcion?.length || 0}/{MAX_DESC} caracteres
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.25rem' }}>
+        <div>
+          <h2 id="titulo-contenido" style={{ marginBottom: '.2rem' }}>{tutoria.titulo}</h2>
+          <span className={`badge ${tutoria.estado === 'activa' ? 'badge-green' : tutoria.estado === 'inactiva' ? 'badge-red' : 'badge-yellow'}`}>
+            {tutoria.estado}
           </span>
         </div>
+      </div>
 
-        <div className="form-group">
-          <label>Subir material (PDF o MP4, máx. 10 MB)</label>
-          <input type="file" accept=".pdf,.mp4" onChange={handleArchivo} />
-          {errorArchivo && <span className="field-error" role="alert">{errorArchivo}</span>}
-          {archivo && <span style={{ fontSize: '.85rem', color: 'var(--color-success)' }}>✔ {archivo.name}</span>}
-        </div>
-
-        <div className="btn-row">
-          <button type="submit" className="btn btn-primary" disabled={guardando}>
-            {guardando ? 'Guardando...' : 'Guardar cambios'}
+      <nav style={{ display: 'flex', gap: '.5rem', marginBottom: '1.5rem', borderBottom: '1px solid var(--color-border)', paddingBottom: '.75rem' }}>
+        {[
+          { id: 'editar',    label: 'Editar contenido' },
+          { id: 'inscritos', label: 'Ver inscritos' },
+        ].map(t => (
+          <button
+            key={t.id}
+            className={`btn btn-sm ${tab === t.id ? 'btn-primary' : 'btn-outline'}`}
+            onClick={() => setTab(t.id)}
+          >
+            {t.label}
           </button>
-        </div>
-      </form>
+        ))}
+      </nav>
+
+      {tab === 'editar' && (
+        <>
+          {error && <p className="alert alert-error" role="alert">{error}</p>}
+          {ok    && <p className="alert alert-success" role="status">{ok}</p>}
+          <form onSubmit={handleGuardar} style={{ maxWidth: 560 }}>
+            <div className="form-group">
+              <label>Título</label>
+              <input name="titulo" value={tutoria.titulo} onChange={handleChange} required maxLength={200} />
+            </div>
+
+            <div className="form-group">
+              <label>Descripción</label>
+              <textarea
+                name="descripcion" value={tutoria.descripcion} onChange={handleChange}
+                maxLength={MAX_DESC} required rows={4} aria-describedby="contador-desc"
+              />
+              <span id="contador-desc" aria-live="polite" style={{ fontSize: '.8rem', color: 'var(--color-muted)' }}>
+                {tutoria.descripcion?.length || 0}/{MAX_DESC} caracteres
+              </span>
+            </div>
+
+            <div className="form-group">
+              <label>Estado de la tutoría</label>
+              <select name="estado" value={tutoria.estado} onChange={handleChange}>
+                {ESTADOS.map(e => <option key={e} value={e}>{e.charAt(0).toUpperCase() + e.slice(1)}</option>)}
+              </select>
+            </div>
+
+            <div className="form-group">
+              <label>Subir material (PDF o MP4, máx. 10 MB)</label>
+              <input type="file" accept=".pdf,.mp4" onChange={handleArchivo} />
+              {errorArchivo && <span className="field-error" role="alert">{errorArchivo}</span>}
+              {archivo && <span style={{ fontSize: '.85rem', color: 'var(--color-success)' }}>✔ {archivo.name}</span>}
+            </div>
+
+            <div className="btn-row">
+              <button type="submit" className="btn btn-primary" disabled={guardando}>
+                {guardando ? 'Guardando...' : 'Guardar cambios'}
+              </button>
+            </div>
+          </form>
+        </>
+      )}
+
+      {tab === 'inscritos' && <TabInscritos tutoriaId={tutoriaId} />}
     </section>
   )
 }

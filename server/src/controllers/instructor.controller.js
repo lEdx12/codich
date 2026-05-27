@@ -1,4 +1,5 @@
-import Usuario from '../models/Usuario.js'
+import Usuario   from '../models/Usuario.js'
+import Membresia from '../models/Membresia.js'
 
 export const listarInstructores = async (_req, res) => {
   try {
@@ -60,21 +61,51 @@ export const editarInstructor = async (req, res) => {
   }
 }
 
-export const suspenderInstructor = async (req, res) => {
+export const listarDisenadores = async (_req, res) => {
+  try {
+    const disenadores = await Usuario.find({ rol: 'diseñador' })
+      .select('-passwordHash -intentosFallidos -bloqueadoHasta')
+      .lean()
+    const ids = disenadores.map(d => d._id)
+    const membresias = await Membresia.find({ usuario: { $in: ids } }).lean()
+    const memMap = Object.fromEntries(membresias.map(m => [m.usuario.toString(), m]))
+    const resultado = disenadores.map(d => ({
+      ...d,
+      membresia: memMap[d._id.toString()] || null,
+    }))
+    res.json(resultado)
+  } catch (err) {
+    console.error('Error al listar diseñadores:', err)
+    res.status(500).json({ mensaje: 'Error interno.' })
+  }
+}
+
+export const toggleEstadoInstructor = async (req, res) => {
   const { id } = req.params
   try {
-    const instructor = await Usuario.findOneAndUpdate(
-      { _id: id, rol: 'instructor' },
-      { estado: 'suspendido' },
-      { new: true }
-    ).select('-passwordHash')
-
+    const instructor = await Usuario.findOne({ _id: id, rol: 'instructor' })
     if (!instructor)
       return res.status(404).json({ mensaje: 'Instructor no encontrado.' })
 
-    res.json({ mensaje: 'Instructor suspendido.', instructor })
+    instructor.estado = instructor.estado === 'activo' ? 'suspendido' : 'activo'
+    await instructor.save()
+
+    res.json({ mensaje: `Instructor ${instructor.estado}.`, instructor })
   } catch (err) {
-    console.error('Error al suspender instructor:', err)
+    console.error('Error al cambiar estado instructor:', err)
+    res.status(500).json({ mensaje: 'Error interno.' })
+  }
+}
+
+export const eliminarInstructor = async (req, res) => {
+  const { id } = req.params
+  try {
+    const instructor = await Usuario.findOneAndDelete({ _id: id, rol: 'instructor' })
+    if (!instructor)
+      return res.status(404).json({ mensaje: 'Instructor no encontrado.' })
+    res.json({ mensaje: 'Instructor eliminado permanentemente.' })
+  } catch (err) {
+    console.error('Error al eliminar instructor:', err)
     res.status(500).json({ mensaje: 'Error interno.' })
   }
 }

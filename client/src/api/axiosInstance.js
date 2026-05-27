@@ -11,12 +11,29 @@ axiosInstance.interceptors.request.use(config => {
   return config
 })
 
+const RUTA_LOGIN_POR_ROL = {
+  administrador: '/admin/login',
+  instructor:    '/instructor/login',
+  'diseñador':   '/login',
+}
+
 axiosInstance.interceptors.response.use(
   res => res,
   err => {
-    if (err.response?.status === 401) {
-      localStorage.removeItem('token')
-      window.location.href = '/login'
+    const esEndpointLogin = err.config?.url?.includes('/auth/login')
+    if (err.response?.status === 401 && !esEndpointLogin) {
+      try {
+        const stored  = localStorage.getItem('usuario')
+        const usuario = stored ? JSON.parse(stored) : null
+        const destino = (usuario?.rol && RUTA_LOGIN_POR_ROL[usuario.rol]) || '/login'
+        localStorage.removeItem('token')
+        localStorage.removeItem('usuario')
+        window.location.href = destino
+      } catch {
+        localStorage.removeItem('token')
+        localStorage.removeItem('usuario')
+        window.location.href = '/login'
+      }
     }
     return Promise.reject(err)
   }

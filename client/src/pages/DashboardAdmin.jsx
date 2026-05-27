@@ -2,9 +2,11 @@ import { useState } from 'react'
 import { useAuth }   from '../hooks/useAuth.js'
 import GestionInstructores from '../components/admin/GestionInstructores.jsx'
 import GeneradorInformes   from '../components/admin/GeneradorInformes.jsx'
+import ListaDisenadores    from '../components/admin/ListaDisenadores.jsx'
 
 const TABS = [
   { id: 'instructores', label: 'Gestión de instructores' },
+  { id: 'disenadores',  label: 'Usuarios diseñadores' },
   { id: 'informes',     label: 'Generar informes' },
 ]
 
@@ -32,6 +34,7 @@ export default function DashboardAdmin() {
       </nav>
 
       {tab === 'instructores' && <GestionInstructores />}
+      {tab === 'disenadores'  && <ListaDisenadores />}
       {tab === 'informes'     && <GeneradorInformes />}
     </div>
   )

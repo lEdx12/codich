@@ -33,7 +33,7 @@ export const iniciarPago = async (req, res) => {
       correoUsuario: req.usuario.correo,
     })
 
-    res.json({ urlPago })
+    res.json({ urlPago, pagoId: pago._id })
   } catch (err) {
     console.error('Error al iniciar pago:', err)
     res.status(500).json({ mensaje: 'Error al iniciar el proceso de pago. Intenta más tarde.' })
@@ -73,6 +73,58 @@ export const webhookPago = async (req, res) => {
   } catch (err) {
     console.error('Error en webhook de pago:', err)
     res.status(500).json({ mensaje: 'Error al procesar la respuesta de la pasarela.' })
+  }
+}
+
+export const simularPago = async (req, res) => {
+  const { pagoId, aprobado } = req.body
+  if (!pagoId) return res.status(400).json({ mensaje: 'pagoId es requerido.' })
+
+  try {
+    const pago = await Pago.findById(pagoId)
+    if (!pago) return res.status(404).json({ mensaje: 'Pago no encontrado.' })
+    if (pago.usuario.toString() !== req.usuario.id)
+      return res.status(403).json({ mensaje: 'No autorizado.' })
+    if (pago.estado !== 'pendiente')
+      return res.status(409).json({ mensaje: 'Este pago ya fue procesado.' })
+
+    if (aprobado) {
+      pago.estado        = 'aprobado'
+      pago.idTransaccion = `MOCK-${Date.now()}`
+      await pago.save()
+
+      const hoy = new Date()
+      const fin = new Date(hoy)
+      const membresia = await Membresia.findOne({ usuario: pago.usuario })
+      if (membresia?.plan === 'mensual') fin.setMonth(fin.getMonth() + 1)
+      else fin.setFullYear(fin.getFullYear() + 1)
+
+      const membresiaActual = await Membresia.findOneAndUpdate(
+        { usuario: pago.usuario },
+        { estado: 'activa', fechaInicio: hoy, fechaFin: fin },
+        { new: true }
+      )
+
+      emailService.enviarComprobante({ usuarioId: pago.usuario, pago }).catch(console.error)
+
+      return res.json({
+        aprobado:    true,
+        mensaje:     '¡Pago aprobado! Tu membresía está activa.',
+        transaccion: pago.idTransaccion,
+        membresia:   membresiaActual,
+      })
+    }
+
+    pago.estado = 'rechazado'
+    await pago.save()
+    await Membresia.findOneAndUpdate({ usuario: pago.usuario }, { estado: 'inactiva' })
+    return res.json({
+      aprobado: false,
+      mensaje:  'Pago rechazado. No se realizó ningún cobro.',
+    })
+  } catch (err) {
+    console.error('Error en simulación de pago:', err)
+    res.status(500).json({ mensaje: 'Error interno.' })
   }
 }
 

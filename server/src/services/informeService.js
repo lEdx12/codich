@@ -26,13 +26,12 @@ async function obtenerDatos(tipo, periodo) {
   }
 
   if (tipo === 'miembros') {
-    const usuarios = await Usuario.find({ createdAt: rango }).lean()
+    const usuarios = await Usuario.find({ createdAt: rango, rol: 'diseñador' }).lean()
     return usuarios.map(u => ({
-      nombre: u.nombre,
-      correo: u.correo,
-      rol:    u.rol,
-      estado: u.estado,
-      fecha_registro: new Date(u.createdAt).toLocaleDateString('es-CL'),
+      nombre:          u.nombre,
+      correo:          u.correo,
+      estado:          u.estado,
+      fecha_registro:  new Date(u.createdAt).toLocaleDateString('es-CL'),
     }))
   }
 
@@ -57,6 +56,14 @@ async function obtenerDatos(tipo, periodo) {
   return []
 }
 
+const LABEL_MAPA = {
+  nombre: 'Nombre', correo: 'Correo', estado: 'Estado', rol: 'Rol',
+  fecha_registro: 'Fecha de registro', monto: 'Monto (CLP)', fecha: 'Fecha',
+  usuario: 'Usuario', concepto: 'Concepto', transaccion: 'N° Transacción',
+  titulo: 'Título', instructor: 'Instructor', categoria: 'Categoría',
+  precio: 'Precio (CLP)', cupos_total: 'Cupos totales', inscritos: 'Inscritos',
+}
+
 export const generarPDF = (tipo, periodo, datos) =>
   new Promise((resolve, reject) => {
     const doc    = new PDFDocument({ margin: 50 })
@@ -65,20 +72,38 @@ export const generarPDF = (tipo, periodo, datos) =>
     doc.on('end', () => resolve(Buffer.concat(chunks)))
     doc.on('error', reject)
 
-    doc.fontSize(18).text(`Informe CODICH — ${tipo.toUpperCase()}`, { align: 'center' })
-    doc.fontSize(12).text(`Período: ${periodo}`, { align: 'center' })
+    doc.font('Helvetica-Bold').fontSize(20).text('CODICH', { align: 'center' })
+    doc.font('Helvetica').fontSize(13).text(`Informe de ${tipo === 'miembros' ? 'Diseñadores Registrados' : tipo === 'ingresos' ? 'Ingresos' : 'Tutorías'}`, { align: 'center' })
+    doc.fontSize(11).text(`Período: ${periodo}`, { align: 'center' })
+    doc.moveDown(0.5)
+    doc.moveTo(50, doc.y).lineTo(545, doc.y).lineWidth(2).stroke()
     doc.moveDown()
 
     if (datos.length === 0) {
-      doc.text('Sin datos para el período seleccionado.')
+      doc.fontSize(11).text('Sin datos para el período seleccionado.')
     } else {
-      const campos = Object.keys(datos[0])
-      doc.fontSize(10).text(campos.join(' | '), { underline: true })
-      doc.moveDown(0.3)
-      datos.forEach(row => {
-        doc.text(Object.values(row).join(' | '))
+      datos.forEach((row, idx) => {
+        if (idx > 0) {
+          doc.moveDown(0.3)
+          doc.moveTo(50, doc.y).lineTo(545, doc.y).lineWidth(0.5).dash(4, { space: 3 }).stroke()
+          doc.undash().moveDown(0.3)
+        }
+        doc.font('Helvetica-Bold').fontSize(10).text(`Registro ${idx + 1}`, { underline: true })
+        doc.moveDown(0.2)
+        Object.entries(row).forEach(([key, val]) => {
+          const label = LABEL_MAPA[key] || key
+          doc.fontSize(10)
+            .font('Helvetica-Bold').text(`${label}: `, { continued: true })
+            .font('Helvetica').text(String(val ?? '—'))
+        })
       })
     }
+
+    doc.moveDown(2)
+    doc.moveTo(50, doc.y).lineTo(545, doc.y).lineWidth(1).stroke()
+    doc.moveDown(0.5)
+    doc.font('Helvetica').fontSize(9).fillColor('gray')
+      .text(`Generado el ${new Date().toLocaleDateString('es-CL')} — CODICH Plataforma`, { align: 'center' })
 
     doc.end()
   })

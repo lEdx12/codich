@@ -1,4 +1,4 @@
-import { Routes, Route, Link, Navigate } from 'react-router-dom'
+import { Routes, Route, Link, Navigate, useNavigate } from 'react-router-dom'
 import { useAuth }          from './hooks/useAuth.js'
 import ProtectedRoute       from './routes/ProtectedRoute.jsx'
 
@@ -13,8 +13,22 @@ import DashboardAdmin       from './pages/DashboardAdmin.jsx'
 
 const ROL_LABEL = { 'diseñador': 'Diseñador', 'instructor': 'Instructor', 'administrador': 'Admin' }
 
+const RUTA_LOGIN_POR_ROL = {
+  'administrador': '/admin/login',
+  'instructor':    '/instructor/login',
+  'diseñador':     '/login',
+}
+
 function AppShell({ children }) {
   const { usuario, logout } = useAuth()
+  const navigate            = useNavigate()
+
+  const handleLogout = () => {
+    const loginPath = RUTA_LOGIN_POR_ROL[usuario?.rol] || '/login'
+    logout()
+    navigate(loginPath, { replace: true })
+  }
+
   return (
     <div className="app-layout">
       <header className="app-header">
@@ -25,7 +39,7 @@ function AppShell({ children }) {
         <nav>
           <span className="user-chip">{usuario?.nombre}</span>
           <span className="role-badge">{ROL_LABEL[usuario?.rol] || usuario?.rol}</span>
-          <button className="btn-logout" onClick={logout}>Cerrar sesión</button>
+          <button className="btn-logout" onClick={handleLogout}>Cerrar sesión</button>
         </nav>
       </header>
       <main className="app-main">{children}</main>
@@ -71,13 +85,13 @@ export default function App() {
       } />
 
       <Route path="/dashboard/instructor" element={
-        <ProtectedRoute rolesPermitidos={['instructor']}>
+        <ProtectedRoute rolesPermitidos={['instructor']} loginPath="/instructor/login">
           <AppShell><DashboardInstructor /></AppShell>
         </ProtectedRoute>
       } />
 
       <Route path="/dashboard/admin" element={
-        <ProtectedRoute rolesPermitidos={['administrador']}>
+        <ProtectedRoute rolesPermitidos={['administrador']} loginPath="/admin/login">
           <AppShell><DashboardAdmin /></AppShell>
         </ProtectedRoute>
       } />

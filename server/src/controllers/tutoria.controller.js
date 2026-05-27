@@ -1,22 +1,49 @@
-import Tutoria     from '../models/Tutoria.js'
+import Tutoria    from '../models/Tutoria.js'
 import Inscripcion  from '../models/Inscripcion.js'
 import Pago         from '../models/Pago.js'
+import Membresia    from '../models/Membresia.js'
 import pagoService  from '../services/pagoService.js'
 
 export const listarTutorias = async (req, res) => {
-  const { pagina = 1, limite = 20 } = req.query
-  const skip = (parseInt(pagina) - 1) * parseInt(limite)
+  const { pagina = 1, limite = 20, instructor } = req.query
+  const skip   = (parseInt(pagina) - 1) * parseInt(limite)
+  const filtro = instructor ? { instructor } : { estado: 'activa' }
   try {
     const [tutorias, total] = await Promise.all([
-      Tutoria.find({ estado: 'activa' })
-        .populate('instructor', 'nombre')
+      Tutoria.find(filtro)
+        .populate('instructor', 'nombre especialidad')
         .skip(skip).limit(parseInt(limite))
-        .lean({ virtuals: true }),
-      Tutoria.countDocuments({ estado: 'activa' }),
+        .lean(),
+      Tutoria.countDocuments(filtro),
     ])
-    res.json({ tutorias, totalPaginas: Math.ceil(total / parseInt(limite)), pagina: parseInt(pagina) })
+    const resultado = tutorias.map(t => ({
+      ...t,
+      cuposDisponibles: (t.cuposTotal || 0) - (t.cuposOcupados || 0),
+    }))
+    res.json({ tutorias: resultado, totalPaginas: Math.ceil(total / parseInt(limite)) || 1, pagina: parseInt(pagina) })
   } catch (err) {
     console.error('Error al listar tutorías:', err)
+    res.status(500).json({ mensaje: 'Error interno.' })
+  }
+}
+
+export const crearTutoria = async (req, res) => {
+  const { titulo, descripcion, precio, cuposTotal, categoria } = req.body
+  if (!titulo || !descripcion || precio == null || !cuposTotal || !categoria)
+    return res.status(400).json({ mensaje: 'Todos los campos son obligatorios.' })
+  try {
+    const tutoria = await Tutoria.create({
+      instructor:  req.usuario.id,
+      titulo,
+      descripcion,
+      precio:      Number(precio),
+      cuposTotal:  Number(cuposTotal),
+      categoria,
+      estado:      'activa',
+    })
+    res.status(201).json({ mensaje: 'Tutoría creada.', tutoria })
+  } catch (err) {
+    console.error('Error al crear tutoría:', err)
     res.status(500).json({ mensaje: 'Error interno.' })
   }
 }
@@ -73,6 +100,15 @@ export const contratarTutoria = async (req, res) => {
     if (yaInscrito)
       return res.status(409).json({ mensaje: 'Ya estás inscrito en esta tutoría.' })
 
+    const membresia = await Membresia.findOne({ usuario: usuarioId })
+    const tieneMembresia = membresia?.estado === 'activa' && membresia?.fechaFin && membresia.fechaFin > new Date()
+
+    if (tieneMembresia) {
+      await Inscripcion.create({ usuario: usuarioId, tutoria: tutoriaId, estado: 'activa' })
+      await Tutoria.findByIdAndUpdate(tutoriaId, { $inc: { cuposOcupados: 1 } })
+      return res.json({ inscrito: true, mensaje: '¡Inscrito exitosamente! Tu membresía activa te da acceso a esta tutoría.' })
+    }
+
     const pago = await Pago.create({
       usuario:  usuarioId,
       monto:    tutoria.precio,
@@ -87,9 +123,39 @@ export const contratarTutoria = async (req, res) => {
       correoUsuario: req.usuario.correo,
     })
 
-    res.json({ urlPago, pagoId: pago._id })
+    res.json({ urlPago, pagoId: pago._id, tutoria: { titulo: tutoria.titulo, precio: tutoria.precio } })
   } catch (err) {
     console.error('Error al contratar tutoría:', err)
+    res.status(500).json({ mensaje: 'Error interno.' })
+  }
+}
+
+export const simularPagoTutoria = async (req, res) => {
+  const { pagoId, aprobado } = req.body
+  const tutoriaId = req.params.id
+  if (!pagoId) return res.status(400).json({ mensaje: 'pagoId es requerido.' })
+  try {
+    const pago = await Pago.findById(pagoId)
+    if (!pago) return res.status(404).json({ mensaje: 'Pago no encontrado.' })
+    if (pago.usuario.toString() !== req.usuario.id)
+      return res.status(403).json({ mensaje: 'No autorizado.' })
+    if (pago.estado !== 'pendiente')
+      return res.status(409).json({ mensaje: 'Este pago ya fue procesado.' })
+
+    if (aprobado) {
+      pago.estado        = 'aprobado'
+      pago.idTransaccion = `MOCK-${Date.now()}`
+      await pago.save()
+      await Inscripcion.create({ usuario: pago.usuario, tutoria: tutoriaId, estado: 'activa' })
+      await Tutoria.findByIdAndUpdate(tutoriaId, { $inc: { cuposOcupados: 1 } })
+      return res.json({ aprobado: true, mensaje: '¡Pago aprobado! Estás inscrito en la tutoría.', transaccion: pago.idTransaccion })
+    }
+
+    pago.estado = 'rechazado'
+    await pago.save()
+    return res.json({ aprobado: false, mensaje: 'Pago rechazado. No se realizó ningún cobro.' })
+  } catch (err) {
+    console.error('Error al simular pago tutoría:', err)
     res.status(500).json({ mensaje: 'Error interno.' })
   }
 }
