@@ -7,6 +7,8 @@ import LoginPage            from './pages/LoginPage.jsx'
 import LoginAdminPage       from './pages/LoginAdminPage.jsx'
 import LoginInstructorPage  from './pages/LoginInstructorPage.jsx'
 import RegisterPage         from './pages/RegisterPage.jsx'
+import ForgotPasswordPage  from './pages/ForgotPasswordPage.jsx'
+import ResetPasswordPage   from './pages/ResetPasswordPage.jsx'
 import DashboardDisenador   from './pages/DashboardDisenador.jsx'
 import DashboardInstructor  from './pages/DashboardInstructor.jsx'
 import DashboardAdmin       from './pages/DashboardAdmin.jsx'
@@ -75,7 +77,9 @@ export default function App() {
       <Route path="/login"              element={<LoginPage />} />
       <Route path="/admin/login"        element={<LoginAdminPage />} />
       <Route path="/instructor/login"   element={<LoginInstructorPage />} />
-      <Route path="/register"           element={<RegisterPage />} />
+      <Route path="/register"             element={<RegisterPage />} />
+      <Route path="/recuperar-password"   element={<ForgotPasswordPage />} />
+      <Route path="/resetear-password"    element={<ResetPasswordPage />} />
       <Route path="/no-autorizado" element={<NoAutorizado />} />
 
       <Route path="/dashboard/disenador" element={

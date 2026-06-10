@@ -125,22 +125,43 @@ export default function CatalogoTutorias() {
         : (
           <div className="tutoria-grid">
             {tutorias.map(t => (
-              <div key={t._id} className="tutoria-card">
-                <h3>{t.titulo}</h3>
-                <p className="desc">{t.descripcion.length > 120 ? t.descripcion.slice(0, 120) + '…' : t.descripcion}</p>
-                <span className="badge badge-gray" style={{ alignSelf: 'start' }}>{t.categoria}</span>
-                <div className="meta">
-                  <strong>${t.precio.toLocaleString('es-CL')} CLP</strong>
-                  <span>{t.cuposDisponibles} cupos</span>
+              <div key={t._id} className="tutoria-card" style={{ padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                <div style={{
+                  height: 155,
+                  background: t.imagen
+                    ? `url(${t.imagen}) center/cover no-repeat`
+                    : 'linear-gradient(135deg, #1a2a1a 0%, #2c3e2c 60%, #1e3a2e 100%)',
+                  position: 'relative',
+                  flexShrink: 0,
+                }}>
+                  <span className="badge badge-gray" style={{ position: 'absolute', top: 10, left: 10, backdropFilter: 'blur(4px)', background: 'rgba(0,0,0,.55)', color: '#fff', border: 'none' }}>{t.categoria}</span>
+                  {t.cuposDisponibles === 0 && (
+                    <span style={{ position: 'absolute', top: 10, right: 10, background: '#dc2626', color: '#fff', fontSize: '.68rem', fontWeight: 700, padding: '.2rem .5rem', borderRadius: '20px' }}>Sin cupos</span>
+                  )}
                 </div>
-                <button
-                  className="btn btn-primary btn-sm"
-                  onClick={() => { setError(''); setMensajeOk(''); setModalContratar(t) }}
-                  disabled={t.cuposDisponibles === 0}
-                  aria-disabled={t.cuposDisponibles === 0}
-                >
-                  {t.cuposDisponibles === 0 ? 'Sin cupos' : 'Inscribirse'}
-                </button>
+                <div style={{ padding: '1rem', flex: 1, display: 'flex', flexDirection: 'column', gap: '.4rem' }}>
+                  <h3 style={{ fontSize: '.97rem', fontWeight: 700, margin: 0, lineHeight: 1.3 }}>{t.titulo}</h3>
+                  <p style={{ fontSize: '.8rem', color: 'var(--color-muted)', flex: 1, margin: 0 }}>
+                    {t.descripcion.length > 100 ? t.descripcion.slice(0, 100) + '…' : t.descripcion}
+                  </p>
+                  {t.instructor?.nombre && (
+                    <p style={{ fontSize: '.75rem', color: 'var(--color-muted)', margin: 0 }}>
+                      Instructor: <strong style={{ color: 'var(--color-text)' }}>{t.instructor.nombre}</strong>
+                    </p>
+                  )}
+                  <p style={{ fontSize: '.75rem', color: 'var(--color-muted)', margin: 0 }}>
+                    {t.cuposDisponibles} cupo{t.cuposDisponibles !== 1 ? 's' : ''} disponible{t.cuposDisponibles !== 1 ? 's' : ''}
+                  </p>
+                  <button
+                    className="btn btn-primary btn-sm"
+                    style={{ marginTop: '.25rem' }}
+                    onClick={() => { setError(''); setMensajeOk(''); setModalContratar(t) }}
+                    disabled={t.cuposDisponibles === 0}
+                    aria-disabled={t.cuposDisponibles === 0}
+                  >
+                    {t.cuposDisponibles === 0 ? 'Sin cupos' : 'Inscribirse'}
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -158,9 +179,8 @@ export default function CatalogoTutorias() {
           <div className="modal">
             <h3 id="modal-contratar">Confirmar inscripción</h3>
             <p style={{ margin: '1rem 0' }}>Tutoría: <strong>{modalContratar.titulo}</strong></p>
-            <p style={{ marginBottom: '.5rem' }}>Precio: <strong>${modalContratar.precio.toLocaleString('es-CL')} CLP</strong></p>
             <p style={{ fontSize: '.8rem', color: 'var(--color-muted)', marginBottom: '1rem' }}>
-              Si tienes membresía activa, el acceso será inmediato y gratuito.
+              Con tu membresía activa, el acceso es inmediato y sin costo adicional.
             </p>
             <div className="btn-row">
               <button className="btn btn-primary" onClick={handleContratar} disabled={procesando}>

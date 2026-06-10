@@ -47,4 +47,19 @@ export const enviarBienvenida = async ({ correo, nombre }) => {
   })
 }
 
-export default { enviarComprobante, enviarBienvenida }
+export const enviarResetPassword = async ({ correo, nombre, enlace }) => {
+  await transporter.sendMail({
+    from:    process.env.EMAIL_FROM || 'CODICH <no-reply@codich.cl>',
+    to:      correo,
+    subject: 'Recuperación de contraseña — CODICH',
+    html: `
+      <h2>Hola, ${nombre}</h2>
+      <p>Recibimos una solicitud para restablecer la contraseña de tu cuenta CODICH.</p>
+      <p>Haz clic en el siguiente enlace para crear una nueva contraseña (válido por <strong>1 hora</strong>):</p>
+      <p><a href="${enlace}" style="color:#4f46e5">${enlace}</a></p>
+      <p>Si no solicitaste esto, puedes ignorar este correo con seguridad.</p>
+    `,
+  })
+}
+
+export default { enviarComprobante, enviarBienvenida, enviarResetPassword }

@@ -28,7 +28,7 @@ export const listarTutorias = async (req, res) => {
 }
 
 export const crearTutoria = async (req, res) => {
-  const { titulo, descripcion, precio, cuposTotal, categoria } = req.body
+  const { titulo, descripcion, precio, cuposTotal, categoria, imagen } = req.body
   if (!titulo || !descripcion || precio == null || !cuposTotal || !categoria)
     return res.status(400).json({ mensaje: 'Todos los campos son obligatorios.' })
   try {
@@ -39,6 +39,7 @@ export const crearTutoria = async (req, res) => {
       precio:      Number(precio),
       cuposTotal:  Number(cuposTotal),
       categoria,
+      imagen:      imagen || '',
       estado:      'activa',
     })
     res.status(201).json({ mensaje: 'Tutoría creada.', tutoria })
@@ -162,11 +163,11 @@ export const simularPagoTutoria = async (req, res) => {
 
 export const editarTutoria = async (req, res) => {
   const { id } = req.params
-  const { titulo, descripcion, precio, cuposTotal, estado, categoria } = req.body
+  const { titulo, descripcion, precio, cuposTotal, estado, categoria, imagen } = req.body
   try {
     const tutoria = await Tutoria.findOneAndUpdate(
       { _id: id, instructor: req.usuario.id },
-      { titulo, descripcion, precio, cuposTotal, estado, categoria },
+      { titulo, descripcion, precio, cuposTotal, estado, categoria, imagen },
       { new: true, runValidators: true }
     )
     if (!tutoria)

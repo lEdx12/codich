@@ -43,18 +43,26 @@ export const crearInstructor = async (req, res) => {
 
 export const editarInstructor = async (req, res) => {
   const { id } = req.params
-  const { nombre, especialidad, estado } = req.body
-  try {
-    const instructor = await Usuario.findOneAndUpdate(
-      { _id: id, rol: 'instructor' },
-      { nombre, especialidad, estado },
-      { new: true, runValidators: true }
-    ).select('-passwordHash')
+  const { nombre, especialidad, estado, password } = req.body
 
+  if (password && password.length < 8)
+    return res.status(400).json({ mensaje: 'La nueva contraseña debe tener al menos 8 caracteres.' })
+
+  try {
+    const instructor = await Usuario.findOne({ _id: id, rol: 'instructor' })
     if (!instructor)
       return res.status(404).json({ mensaje: 'Instructor no encontrado.' })
 
-    res.json({ mensaje: 'Instructor actualizado.', instructor })
+    if (nombre)       instructor.nombre       = nombre
+    if (especialidad !== undefined) instructor.especialidad = especialidad
+    if (estado)       instructor.estado       = estado
+    if (password)     instructor.passwordHash = password
+
+    await instructor.save({ validateBeforeSave: false })
+
+    const resultado = instructor.toObject()
+    delete resultado.passwordHash
+    res.json({ mensaje: 'Instructor actualizado.', instructor: resultado })
   } catch (err) {
     console.error('Error al editar instructor:', err)
     res.status(500).json({ mensaje: 'Error interno.' })
@@ -88,7 +96,7 @@ export const toggleEstadoInstructor = async (req, res) => {
       return res.status(404).json({ mensaje: 'Instructor no encontrado.' })
 
     instructor.estado = instructor.estado === 'activo' ? 'suspendido' : 'activo'
-    await instructor.save()
+    await instructor.save({ validateBeforeSave: false })
 
     res.json({ mensaje: `Instructor ${instructor.estado}.`, instructor })
   } catch (err) {

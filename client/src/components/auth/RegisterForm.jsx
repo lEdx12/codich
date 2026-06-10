@@ -2,24 +2,51 @@ import { useState } from 'react'
 import { Link }      from 'react-router-dom'
 import axiosInstance from '../../api/axiosInstance'
 
+const SOLO_LETRAS = /^[a-zA-ZáéíóúÁÉÍÓÚüÜñÑ\s]+$/
+const CORREO_RE   = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
 function validarCampos(form) {
   const errores = {}
-  if (!form.nombre.trim())
-    errores.nombre = 'El nombre es obligatorio.'
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.correo))
+
+  if (!form.nombres.trim())
+    errores.nombres = 'Los nombres son obligatorios.'
+  else if (!SOLO_LETRAS.test(form.nombres.trim()))
+    errores.nombres = 'Los nombres no pueden contener números ni símbolos.'
+
+  if (!form.apellidos.trim())
+    errores.apellidos = 'Los apellidos son obligatorios.'
+  else if (!SOLO_LETRAS.test(form.apellidos.trim()))
+    errores.apellidos = 'Los apellidos no pueden contener números ni símbolos.'
+
+  if (!CORREO_RE.test(form.correo))
     errores.correo = 'Ingresa un correo válido (ej: usuario@dominio.com).'
+
+  if (!form.fechaNacimiento) {
+    errores.fechaNacimiento = 'La fecha de nacimiento es obligatoria.'
+  } else {
+    const hoy     = new Date()
+    const nacimiento = new Date(form.fechaNacimiento)
+    const edad18  = new Date(nacimiento.getFullYear() + 18, nacimiento.getMonth(), nacimiento.getDate())
+    if (nacimiento >= hoy)
+      errores.fechaNacimiento = 'La fecha de nacimiento no puede ser futura.'
+    else if (edad18 > hoy)
+      errores.fechaNacimiento = 'Debes tener al menos 18 años para registrarte.'
+  }
+
   if (form.password.length < 8)
     errores.password = 'La contraseña debe tener al menos 8 caracteres.'
+
   if (form.password !== form.confirmar)
     errores.confirmar = 'Las contraseñas no coinciden.'
+
   return errores
 }
 
 export default function RegisterForm() {
-  const [form, setForm]       = useState({ nombre: '', correo: '', password: '', confirmar: '' })
-  const [errores, setErrores] = useState({})
+  const [form, setForm]         = useState({ nombres: '', apellidos: '', correo: '', fechaNacimiento: '', password: '', confirmar: '' })
+  const [errores, setErrores]   = useState({})
   const [enviando, setEnviando] = useState(false)
-  const [exito, setExito]     = useState(false)
+  const [exito, setExito]       = useState(false)
   const [errorApi, setErrorApi] = useState('')
 
   const handleChange = e => {
@@ -37,7 +64,13 @@ export default function RegisterForm() {
     setEnviando(true)
     setErrorApi('')
     try {
-      await axiosInstance.post('/auth/register', { nombre: form.nombre, correo: form.correo, password: form.password })
+      await axiosInstance.post('/auth/register', {
+        nombre:          form.nombres.trim(),
+        apellidos:       form.apellidos.trim(),
+        correo:          form.correo,
+        fechaNacimiento: form.fechaNacimiento,
+        password:        form.password,
+      })
       setExito(true)
     } catch (err) {
       const msg = err.response?.data?.mensaje
@@ -61,21 +94,26 @@ export default function RegisterForm() {
     )
   }
 
+  const campos = [
+    { name: 'nombres',          label: 'Nombres',                         type: 'text' },
+    { name: 'apellidos',        label: 'Apellidos',                       type: 'text' },
+    { name: 'correo',           label: 'Correo electrónico',              type: 'email' },
+    { name: 'fechaNacimiento',  label: 'Fecha de nacimiento',             type: 'date', max: (() => { const d = new Date(); d.setFullYear(d.getFullYear() - 18); return d.toISOString().split('T')[0] })() },
+    { name: 'password',         label: 'Contraseña (mín. 8 caracteres)', type: 'password' },
+    { name: 'confirmar',        label: 'Confirmar contraseña',            type: 'password' },
+  ]
+
   return (
     <form onSubmit={handleSubmit} noValidate aria-labelledby="titulo-registro">
       <h2 id="titulo-registro" style={{ marginBottom: '1.5rem', textAlign: 'center' }}>Crear cuenta</h2>
       {errorApi && <p className="alert alert-error" role="alert">{errorApi}</p>}
 
-      {[
-        { name: 'nombre',    label: 'Nombre completo',             type: 'text' },
-        { name: 'correo',    label: 'Correo electrónico',          type: 'email' },
-        { name: 'password',  label: 'Contraseña (mín. 8 caracteres)', type: 'password' },
-        { name: 'confirmar', label: 'Confirmar contraseña',        type: 'password' },
-      ].map(({ name, label, type }) => (
+      {campos.map(({ name, label, type, max }) => (
         <div key={name} className="form-group">
           <label htmlFor={name}>{label}</label>
           <input
             id={name} name={name} type={type} value={form[name]} onChange={handleChange}
+            max={max}
             aria-describedby={errores[name] ? `${name}-error` : undefined}
             aria-invalid={!!errores[name]} required
           />

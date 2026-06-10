@@ -61,7 +61,12 @@ export default function LoginForm({ allowedRol }) {
       </div>
 
       <div className="form-group">
-        <label htmlFor="password">Contraseña</label>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+          <label htmlFor="password">Contraseña</label>
+          <Link to="/recuperar-password" style={{ fontSize: '.8rem', color: 'var(--color-primary)' }}>
+            ¿Olvidaste tu contraseña?
+          </Link>
+        </div>
         <input id="password" name="password" type="password" value={form.password}
           onChange={handleChange} autoComplete="current-password" required aria-invalid={!!error} />
       </div>

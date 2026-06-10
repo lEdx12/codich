@@ -10,7 +10,7 @@ export const rateLimiter = rateLimit({
 
 export const authRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 10,
+  max: 20,
   standardHeaders: true,
   legacyHeaders: false,
   message: { mensaje: 'Demasiados intentos de autenticación. Espera 15 minutos.' },

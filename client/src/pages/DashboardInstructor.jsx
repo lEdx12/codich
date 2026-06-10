@@ -12,7 +12,7 @@ const ESTADO_BADGE = {
 }
 
 function FormularioNuevaTutoria({ onCreada, onCancelar }) {
-  const [form, setForm]     = useState({ titulo: '', descripcion: '', precio: '', cuposTotal: '', categoria: '' })
+  const [form, setForm]     = useState({ titulo: '', descripcion: '', precio: '', cuposTotal: '', categoria: '', imagen: '' })
   const [error, setError]   = useState('')
   const [guardando, setGuardando] = useState(false)
 
@@ -54,6 +54,13 @@ function FormularioNuevaTutoria({ onCreada, onCancelar }) {
             <label>Cupos totales <span style={{ color: 'var(--color-error)' }}>*</span></label>
             <input name="cuposTotal" type="number" min="1" value={form.cuposTotal} onChange={handleChange} required placeholder="20" />
           </div>
+        </div>
+        <div className="form-group">
+          <label>Imagen de referencia (URL)</label>
+          <input name="imagen" type="url" value={form.imagen} onChange={handleChange} placeholder="https://ejemplo.com/imagen.jpg" />
+          {form.imagen && (
+            <img src={form.imagen} alt="Vista previa" onError={e => e.target.style.display='none'} style={{ marginTop: '.5rem', width: '100%', maxHeight: 140, objectFit: 'cover', borderRadius: '8px', border: '1px solid var(--color-border)' }} />
+          )}
         </div>
         <div className="form-group">
           <label>Categoría <span style={{ color: 'var(--color-error)' }}>*</span></label>
@@ -153,8 +160,8 @@ export default function DashboardInstructor() {
                 <h3>{t.titulo}</h3>
                 <span className={`badge ${ESTADO_BADGE[t.estado] || 'badge-gray'}`}>{t.estado}</span>
                 <div className="meta">
-                  <span>${Number(t.precio).toLocaleString('es-CL')} CLP</span>
                   <span>{t.cuposOcupados}/{t.cuposTotal} inscritos</span>
+                  <span>{(t.cuposTotal - t.cuposOcupados)} cupos libres</span>
                 </div>
                 <p style={{ fontSize: '.82rem', color: 'var(--color-muted)', marginBottom: '.75rem' }}>{t.categoria}</p>
                 <button className="btn btn-outline btn-sm" style={{ width: '100%' }} onClick={() => setTutoriaSeleccionada(t._id)}>

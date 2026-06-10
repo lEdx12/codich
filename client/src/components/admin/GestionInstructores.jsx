@@ -166,13 +166,30 @@ export default function GestionInstructores() {
 }
 
 function FormularioInstructor({ datos, onGuardar, onCancelar }) {
-  const [form, setForm] = useState(datos)
+  const [form, setForm]             = useState({ ...datos, nuevaPassword: '' })
+  const [errorLocal, setErrorLocal] = useState('')
   const handleChange = e => setForm({ ...form, [e.target.name]: e.target.value })
+
+  const handleSubmit = e => {
+    e.preventDefault()
+    setErrorLocal('')
+    if (form._id && form.nuevaPassword && form.nuevaPassword.length < 8) {
+      setErrorLocal('La nueva contraseña debe tener al menos 8 caracteres.')
+      return
+    }
+    const payload = { ...form }
+    if (form._id) {
+      payload.password = form.nuevaPassword || undefined
+    }
+    delete payload.nuevaPassword
+    onGuardar(payload)
+  }
 
   return (
     <div className="modal" aria-labelledby="form-titulo">
       <h3 id="form-titulo">{form._id ? 'Editar instructor' : 'Nuevo instructor'}</h3>
-      <form onSubmit={e => { e.preventDefault(); onGuardar(form) }} style={{ marginTop: '1rem' }}>
+      <form onSubmit={handleSubmit} style={{ marginTop: '1rem' }}>
+        {errorLocal && <p className="alert alert-error" role="alert">{errorLocal}</p>}
         <div className="form-group">
           <label>Nombre</label>
           <input name="nombre" value={form.nombre} onChange={handleChange} required />
@@ -187,8 +204,14 @@ function FormularioInstructor({ datos, onGuardar, onCancelar }) {
         </div>
         {!form._id && (
           <div className="form-group">
-            <label>Contraseña inicial</label>
+            <label>Contraseña inicial <span style={{ color: 'var(--color-error)' }}>*</span></label>
             <input name="password" type="password" value={form.password || ''} onChange={handleChange} required minLength={8} />
+          </div>
+        )}
+        {form._id && (
+          <div className="form-group">
+            <label>Nueva contraseña <span style={{ fontSize: '.78rem', color: 'var(--color-muted)', fontWeight: 400 }}>(dejar en blanco para no cambiar)</span></label>
+            <input name="nuevaPassword" type="password" value={form.nuevaPassword} onChange={handleChange} minLength={8} autoComplete="new-password" />
           </div>
         )}
         <div className="form-group">

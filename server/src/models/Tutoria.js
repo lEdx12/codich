@@ -9,6 +9,7 @@ const tutoriaSchema = new mongoose.Schema({
   cuposOcupados: { type: Number, default: 0 },
   estado:        { type: String, enum: ['activa', 'inactiva', 'borrador'], default: 'borrador' },
   categoria:     { type: String, required: true },
+  imagen:        { type: String, default: '' },
   materiales:    [{ type: mongoose.Schema.Types.ObjectId, ref: 'Material' }],
 }, { timestamps: true })
 
