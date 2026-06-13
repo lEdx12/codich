@@ -10,6 +10,7 @@ import instructorRoutes from './routes/instructor.routes.js'
 import informeRoutes    from './routes/informe.routes.js'
 import tutoriaRoutes    from './routes/tutoria.routes.js'
 import materialRoutes   from './routes/material.routes.js'
+import estadisticasRoutes from './routes/estadisticas.routes.js'
 
 const app = express()
 
@@ -29,6 +30,7 @@ app.use('/api/instructores', instructorRoutes)
 app.use('/api/informes',    informeRoutes)
 app.use('/api/tutorias',    tutoriaRoutes)
 app.use('/api/materiales',  materialRoutes)
+app.use('/api/estadisticas', estadisticasRoutes)
 
 // Health check
 app.get('/api/health', (_req, res) => res.json({ status: 'ok', timestamp: new Date().toISOString() }))

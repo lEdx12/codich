@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react'
 import axiosInstance from '../../api/axiosInstance'
+import { CATEGORIAS, ESTADOS } from '../../constants/tutorias.js'
 
 const MAX_DESC    = 500
 const MAX_BYTES   = 10 * 1024 * 1024
 const FORMATOS_OK = ['application/pdf', 'video/mp4']
-const ESTADOS     = ['borrador', 'activa', 'inactiva']
 
 function TabInscritos({ tutoriaId }) {
   const [inscritos, setInscritos] = useState([])
@@ -94,6 +94,9 @@ export default function GestionContenido({ tutoriaId, onActualizada }) {
         titulo:      tutoria.titulo,
         descripcion: tutoria.descripcion,
         estado:      tutoria.estado,
+        categoria:   tutoria.categoria,
+        cuposTotal:  Number(tutoria.cuposTotal),
+        imagen:      tutoria.imagen || '',
       })
       setOk('Cambios guardados correctamente.')
       setArchivo(null)
@@ -153,6 +156,34 @@ export default function GestionContenido({ tutoriaId, onActualizada }) {
               <span id="contador-desc" aria-live="polite" style={{ fontSize: '.8rem', color: 'var(--color-muted)' }}>
                 {tutoria.descripcion?.length || 0}/{MAX_DESC} caracteres
               </span>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+              <div className="form-group">
+                <label>Categoría</label>
+                <select name="categoria" value={tutoria.categoria || ''} onChange={handleChange}>
+                  <option value="">-- Seleccionar --</option>
+                  {CATEGORIAS.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+              <div className="form-group">
+                <label>Cupos totales</label>
+                <input
+                  name="cuposTotal" type="number" value={tutoria.cuposTotal || ''}
+                  min={tutoria.cuposOcupados || 1} onChange={handleChange}
+                />
+                <span style={{ fontSize: '.78rem', color: 'var(--color-muted)' }}>
+                  {tutoria.cuposOcupados || 0} inscritos · no puedes bajar de ese número
+                </span>
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label>Imagen de referencia (URL)</label>
+              <input name="imagen" type="url" value={tutoria.imagen || ''} onChange={handleChange} placeholder="https://ejemplo.com/imagen.jpg" />
+              {tutoria.imagen && (
+                <img src={tutoria.imagen} alt="Vista previa" onError={e => e.target.style.display='none'} style={{ marginTop: '.5rem', width: '100%', maxHeight: 140, objectFit: 'cover', borderRadius: '8px', border: '1px solid var(--color-border)' }} />
+              )}
             </div>
 
             <div className="form-group">

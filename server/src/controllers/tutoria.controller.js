@@ -28,15 +28,14 @@ export const listarTutorias = async (req, res) => {
 }
 
 export const crearTutoria = async (req, res) => {
-  const { titulo, descripcion, precio, cuposTotal, categoria, imagen } = req.body
-  if (!titulo || !descripcion || precio == null || !cuposTotal || !categoria)
+  const { titulo, descripcion, cuposTotal, categoria, imagen } = req.body
+  if (!titulo || !descripcion || !cuposTotal || !categoria)
     return res.status(400).json({ mensaje: 'Todos los campos son obligatorios.' })
   try {
     const tutoria = await Tutoria.create({
       instructor:  req.usuario.id,
       titulo,
       descripcion,
-      precio:      Number(precio),
       cuposTotal:  Number(cuposTotal),
       categoria,
       imagen:      imagen || '',

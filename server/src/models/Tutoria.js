@@ -4,7 +4,7 @@ const tutoriaSchema = new mongoose.Schema({
   instructor:    { type: mongoose.Schema.Types.ObjectId, ref: 'Usuario', required: true },
   titulo:        { type: String, required: true, maxlength: 200 },
   descripcion:   { type: String, required: true, maxlength: 500 },
-  precio:        { type: Number, required: true },
+  precio:        { type: Number, default: 0 },
   cuposTotal:    { type: Number, required: true },
   cuposOcupados: { type: Number, default: 0 },
   estado:        { type: String, enum: ['activa', 'inactiva', 'borrador'], default: 'borrador' },

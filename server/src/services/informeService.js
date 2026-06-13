@@ -64,47 +64,145 @@ const LABEL_MAPA = {
   precio: 'Precio (CLP)', cupos_total: 'Cupos totales', inscritos: 'Inscritos',
 }
 
+const COLORS = {
+  primary:     '#1a3a5c',
+  primaryDark: '#0f2540',
+  accentSoft:  '#ffa07a',
+  rowAlt:      '#f1f5f9',
+  border:      '#e2e8f0',
+  text:        '#1e2a3a',
+  muted:       '#94a3b8',
+  summaryBg:   '#eef2f6',
+}
+
+const TITULO_MAPA = {
+  ingresos: 'Informe de Ingresos',
+  miembros: 'Informe de Diseñadores Registrados',
+  tutorias: 'Informe de Tutorías',
+}
+
+const COL_WEIGHTS = {
+  nombre: 2, titulo: 2.2, usuario: 1.8, correo: 2.2,
+  instructor: 1.6, concepto: 1.8, transaccion: 1.6,
+}
+
+const fmtMonto = v => `$${Number(v || 0).toLocaleString('es-CL')}`
+
+const formatVal = (key, val) => {
+  if (val === null || val === undefined || val === '') return '—'
+  if (key === 'monto' || key === 'precio') return fmtMonto(val)
+  return String(val)
+}
+
+function dibujarPie(doc) {
+  const range = doc.bufferedPageRange()
+  for (let i = range.start; i < range.start + range.count; i++) {
+    doc.switchToPage(i)
+    const left   = doc.page.margins.left
+    const right  = doc.page.width - doc.page.margins.right
+    const bottom = doc.page.height - 32
+    doc.moveTo(left, bottom).lineTo(right, bottom).lineWidth(0.5).strokeColor(COLORS.border).stroke()
+    doc.fillColor(COLORS.muted).font('Helvetica').fontSize(8)
+      .text('CODICH — Plataforma de Diseño', left, bottom + 6, { lineBreak: false })
+      .text(`Página ${i + 1} de ${range.count}`, left, bottom + 6, { width: right - left, align: 'right', lineBreak: false })
+  }
+}
+
 export const generarPDF = (tipo, periodo, datos) =>
   new Promise((resolve, reject) => {
-    const doc    = new PDFDocument({ margin: 50 })
+    const doc    = new PDFDocument({ margin: 40, size: 'A4', bufferPages: true })
     const chunks = []
     doc.on('data', c => chunks.push(c))
     doc.on('end', () => resolve(Buffer.concat(chunks)))
     doc.on('error', reject)
 
-    doc.font('Helvetica-Bold').fontSize(20).text('CODICH', { align: 'center' })
-    doc.font('Helvetica').fontSize(13).text(`Informe de ${tipo === 'miembros' ? 'Diseñadores Registrados' : tipo === 'ingresos' ? 'Ingresos' : 'Tutorías'}`, { align: 'center' })
-    doc.fontSize(11).text(`Período: ${periodo}`, { align: 'center' })
-    doc.moveDown(0.5)
-    doc.moveTo(50, doc.y).lineTo(545, doc.y).lineWidth(2).stroke()
-    doc.moveDown()
+    const pageW  = doc.page.width
+    const left   = doc.page.margins.left
+    const right  = pageW - doc.page.margins.right
+    const usable = right - left
 
-    if (datos.length === 0) {
-      doc.fontSize(11).text('Sin datos para el período seleccionado.')
-    } else {
-      datos.forEach((row, idx) => {
-        if (idx > 0) {
-          doc.moveDown(0.3)
-          doc.moveTo(50, doc.y).lineTo(545, doc.y).lineWidth(0.5).dash(4, { space: 3 }).stroke()
-          doc.undash().moveDown(0.3)
-        }
-        doc.font('Helvetica-Bold').fontSize(10).text(`Registro ${idx + 1}`, { underline: true })
-        doc.moveDown(0.2)
-        Object.entries(row).forEach(([key, val]) => {
-          const label = LABEL_MAPA[key] || key
-          doc.fontSize(10)
-            .font('Helvetica-Bold').text(`${label}: `, { continued: true })
-            .font('Helvetica').text(String(val ?? '—'))
-        })
-      })
+    // ── Banda de cabecera con marca ──
+    doc.rect(0, 0, pageW, 92).fill(COLORS.primary)
+    doc.fillColor('#ffffff').font('Helvetica-Bold').fontSize(24).text('CODICH', left, 26)
+    doc.fillColor(COLORS.accentSoft).font('Helvetica-Bold').fontSize(8)
+      .text('PLATAFORMA DE DISEÑO', left, 56, { characterSpacing: 1 })
+    doc.fillColor('#ffffff').font('Helvetica-Bold').fontSize(14)
+      .text(TITULO_MAPA[tipo] || 'Informe', left, 30, { width: usable, align: 'right' })
+    doc.font('Helvetica').fontSize(9).fillColor('#cdd9e5')
+      .text(`Período: ${periodo}`, left, 50, { width: usable, align: 'right' })
+      .text(`Generado: ${new Date().toLocaleDateString('es-CL')}`, left, 63, { width: usable, align: 'right' })
+
+    // ── Sin datos ──
+    if (!datos || datos.length === 0) {
+      doc.fillColor(COLORS.muted).font('Helvetica').fontSize(12)
+        .text('Sin datos para el período seleccionado.', left, 130, { width: usable, align: 'center' })
+      dibujarPie(doc)
+      doc.end()
+      return
     }
 
-    doc.moveDown(2)
-    doc.moveTo(50, doc.y).lineTo(545, doc.y).lineWidth(1).stroke()
-    doc.moveDown(0.5)
-    doc.font('Helvetica').fontSize(9).fillColor('gray')
-      .text(`Generado el ${new Date().toLocaleDateString('es-CL')} — CODICH Plataforma`, { align: 'center' })
+    // ── Columnas dinámicas ──
+    const keys      = Object.keys(datos[0])
+    const weights   = keys.map(k => COL_WEIGHTS[k] || 1)
+    const totalW    = weights.reduce((a, b) => a + b, 0)
+    const colWidths = weights.map(w => (w / totalW) * usable)
+    const colX      = []
+    let acc = left
+    colWidths.forEach(w => { colX.push(acc); acc += w })
 
+    const PAD        = 5
+    const headerH    = 24
+    const fontSize   = 8
+    const pageBottom = doc.page.height - doc.page.margins.bottom - 40
+
+    const dibujarEncabezadoTabla = (y) => {
+      doc.rect(left, y, usable, headerH).fill(COLORS.primaryDark)
+      doc.fillColor('#ffffff').font('Helvetica-Bold').fontSize(fontSize)
+      keys.forEach((k, i) => {
+        doc.text(LABEL_MAPA[k] || k, colX[i] + PAD, y + 8,
+          { width: colWidths[i] - PAD * 2, lineBreak: false, ellipsis: true })
+      })
+      return y + headerH
+    }
+
+    let y = dibujarEncabezadoTabla(110)
+
+    datos.forEach((row, idx) => {
+      doc.font('Helvetica').fontSize(fontSize)
+      let rowH = 16
+      keys.forEach((k, i) => {
+        const h = doc.heightOfString(formatVal(k, row[k]), { width: colWidths[i] - PAD * 2 })
+        rowH = Math.max(rowH, h + 8)
+      })
+
+      if (y + rowH > pageBottom) {
+        doc.addPage()
+        y = dibujarEncabezadoTabla(doc.page.margins.top)
+      }
+
+      if (idx % 2 === 1) doc.rect(left, y, usable, rowH).fill(COLORS.rowAlt)
+
+      doc.fillColor(COLORS.text).font('Helvetica').fontSize(fontSize)
+      keys.forEach((k, i) => {
+        doc.text(formatVal(k, row[k]), colX[i] + PAD, y + 4, { width: colWidths[i] - PAD * 2 })
+      })
+      doc.moveTo(left, y + rowH).lineTo(right, y + rowH).lineWidth(0.5).strokeColor(COLORS.border).stroke()
+      y += rowH
+    })
+
+    // ── Resumen ──
+    y += 14
+    if (y + 30 > pageBottom) { doc.addPage(); y = doc.page.margins.top }
+    doc.rect(left, y, usable, 28).fill(COLORS.summaryBg)
+    doc.fillColor(COLORS.primary).font('Helvetica-Bold').fontSize(10)
+      .text(`Total de registros: ${datos.length}`, left + PAD, y + 9, { lineBreak: false })
+    if (tipo === 'ingresos') {
+      const total = datos.reduce((a, r) => a + (Number(r.monto) || 0), 0)
+      doc.text(`Ingresos totales: ${fmtMonto(total)}`, left, y + 9,
+        { width: usable - PAD, align: 'right', lineBreak: false })
+    }
+
+    dibujarPie(doc)
     doc.end()
   })
 

@@ -109,26 +109,30 @@ export default function GestionInstructores() {
                 <td>{inst.especialidad || '—'}</td>
                 <td>{badgeEstado(inst.estado)}</td>
                 <td>
-                  <div className="btn-row" style={{ margin: 0, flexWrap: 'nowrap' }}>
+                  <div className="action-row">
                     <button
-                      className="btn btn-outline btn-sm"
+                      className="action-btn action-btn--edit"
                       onClick={() => { setError(''); setMensajeOk(''); setFormulario(inst) }}
+                      title="Editar instructor"
                     >
-                      Editar
+                      <span aria-hidden="true">✎</span> Editar
                     </button>
                     <button
-                      className={`btn btn-sm ${inst.estado === 'activo' ? 'btn-danger' : 'btn-outline'}`}
+                      className={`action-btn ${inst.estado === 'activo' ? 'action-btn--suspend' : 'action-btn--activate'}`}
                       onClick={() => handleToggleEstado(inst)}
                       disabled={toggling === inst._id}
-                      style={inst.estado !== 'activo' ? { borderColor: '#16a34a', color: '#16a34a' } : {}}
+                      title={inst.estado === 'activo' ? 'Suspender instructor' : 'Activar instructor'}
                     >
-                      {toggling === inst._id ? '...' : inst.estado === 'activo' ? 'Suspender' : 'Activar'}
+                      {toggling === inst._id
+                        ? '...'
+                        : <><span aria-hidden="true">{inst.estado === 'activo' ? '⊘' : '✓'}</span> {inst.estado === 'activo' ? 'Suspender' : 'Activar'}</>}
                     </button>
                     <button
-                      className="btn btn-danger btn-sm"
+                      className="action-btn action-btn--delete"
                       onClick={() => { setError(''); setMensajeOk(''); setModalEliminar(inst) }}
+                      title="Eliminar instructor"
                     >
-                      Eliminar
+                      <span aria-hidden="true">✕</span> Eliminar
                     </button>
                   </div>
                 </td>
