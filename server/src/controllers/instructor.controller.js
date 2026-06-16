@@ -58,6 +58,12 @@ export const editarInstructor = async (req, res) => {
     if (estado)       instructor.estado       = estado
     if (password)     instructor.passwordHash = password
 
+    // Al cambiar la contraseña o reactivar la cuenta, se elimina cualquier bloqueo previo
+    if (password || estado === 'activo') {
+      instructor.intentosFallidos = 0
+      instructor.bloqueadoHasta   = null
+    }
+
     await instructor.save({ validateBeforeSave: false })
 
     const resultado = instructor.toObject()
@@ -96,6 +102,11 @@ export const toggleEstadoInstructor = async (req, res) => {
       return res.status(404).json({ mensaje: 'Instructor no encontrado.' })
 
     instructor.estado = instructor.estado === 'activo' ? 'suspendido' : 'activo'
+    // Al reactivar la cuenta, se elimina cualquier bloqueo por intentos fallidos
+    if (instructor.estado === 'activo') {
+      instructor.intentosFallidos = 0
+      instructor.bloqueadoHasta   = null
+    }
     await instructor.save({ validateBeforeSave: false })
 
     res.json({ mensaje: `Instructor ${instructor.estado}.`, instructor })

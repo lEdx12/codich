@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import axiosInstance from '../../api/axiosInstance'
 import { CATEGORIAS, ESTADOS } from '../../constants/tutorias.js'
+import { fmtTamano } from '../../utils/formato.js'
 
 const MAX_DESC    = 500
 const MAX_BYTES   = 10 * 1024 * 1024
@@ -60,12 +61,13 @@ export default function GestionContenido({ tutoriaId, onActualizada }) {
   const [errorArchivo, setErrorArchivo] = useState('')
   const [tab, setTab]                   = useState('editar')
 
-  useEffect(() => {
+  const cargarTutoria = () =>
     axiosInstance.get(`/tutorias/${tutoriaId}`)
       .then(({ data }) => setTutoria(data))
       .catch(() => setError('No se pudo cargar la tutoría.'))
       .finally(() => setCargando(false))
-  }, [tutoriaId])
+
+  useEffect(() => { cargarTutoria() }, [tutoriaId])
 
   const handleChange = e => setTutoria({ ...tutoria, [e.target.name]: e.target.value })
 
@@ -80,9 +82,16 @@ export default function GestionContenido({ tutoriaId, onActualizada }) {
 
   const handleGuardar = async e => {
     e.preventDefault()
-    setGuardando(true)
     setError('')
     setOk('')
+
+    // Validación antes de guardar
+    if (!tutoria.titulo?.trim())      return setError('El título es obligatorio.')
+    if (!tutoria.descripcion?.trim()) return setError('La descripción es obligatoria.')
+    if (Number(tutoria.cuposTotal) < (tutoria.cuposOcupados || 0))
+      return setError(`Los cupos no pueden ser menores a los ${tutoria.cuposOcupados} alumnos ya inscritos.`)
+
+    setGuardando(true)
     try {
       if (archivo) {
         const formData = new FormData()
@@ -98,8 +107,9 @@ export default function GestionContenido({ tutoriaId, onActualizada }) {
         cuposTotal:  Number(tutoria.cuposTotal),
         imagen:      tutoria.imagen || '',
       })
-      setOk('Cambios guardados correctamente.')
       setArchivo(null)
+      await cargarTutoria()
+      setOk('Cambios guardados correctamente.')
       if (onActualizada) onActualizada()
     } catch (err) {
       setError(err.response?.data?.mensaje || 'Error al guardar los cambios.')
@@ -194,10 +204,28 @@ export default function GestionContenido({ tutoriaId, onActualizada }) {
             </div>
 
             <div className="form-group">
+              <label>Material de la tutoría</label>
+              {(!tutoria.materiales || tutoria.materiales.length === 0) ? (
+                <p style={{ fontSize: '.85rem', color: 'var(--color-muted)' }}>Aún no has subido material para esta tutoría.</p>
+              ) : (
+                <ul className="material-list">
+                  {tutoria.materiales.map(m => (
+                    <li key={m._id} className="material-item">
+                      <span className={`badge ${m.formato === 'mp4' ? 'badge-yellow' : 'badge-gray'}`}>{m.formato?.toUpperCase()}</span>
+                      <span className="material-item__name">{m.nombreArchivo}</span>
+                      {m.tamano ? <span className="material-item__size">{fmtTamano(m.tamano)}</span> : null}
+                      <a href={m.urlArchivo} target="_blank" rel="noreferrer" className="btn btn-outline btn-sm">Ver</a>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            <div className="form-group">
               <label>Subir material (PDF o MP4, máx. 10 MB)</label>
               <input type="file" accept=".pdf,.mp4" onChange={handleArchivo} />
               {errorArchivo && <span className="field-error" role="alert">{errorArchivo}</span>}
-              {archivo && <span style={{ fontSize: '.85rem', color: 'var(--color-success)' }}>✔ {archivo.name}</span>}
+              {archivo && <span style={{ fontSize: '.85rem', color: 'var(--color-success)' }}>✔ {archivo.name} (se subirá al guardar)</span>}
             </div>
 
             <div className="btn-row">

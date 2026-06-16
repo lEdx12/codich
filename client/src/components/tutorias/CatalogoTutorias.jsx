@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import axiosInstance from '../../api/axiosInstance'
+import VistaTutoriaInscrita from './VistaTutoriaInscrita.jsx'
 
 function SimuladorPagoTutoria({ tutoria, pagoId, onResultado, onCancelar }) {
   const [procesando, setProcesando] = useState(false)
@@ -60,6 +61,7 @@ export default function CatalogoTutorias() {
   const [procesando, setProcesando]           = useState(false)
   const [mensajeOk, setMensajeOk]             = useState('')
   const [simulador, setSimulador]             = useState(null)
+  const [vistaTutoria, setVistaTutoria]       = useState(null)
 
   useEffect(() => { cargarTutorias() }, [pagina])
 
@@ -112,6 +114,7 @@ export default function CatalogoTutorias() {
     }
   }
 
+  if (vistaTutoria) return <VistaTutoriaInscrita tutoriaId={vistaTutoria} onVolver={() => setVistaTutoria(null)} />
   if (cargando) return <p aria-live="polite" style={{ padding: '2rem' }}>Cargando tutorías...</p>
 
   return (
@@ -152,15 +155,25 @@ export default function CatalogoTutorias() {
                   <p style={{ fontSize: '.75rem', color: 'var(--color-muted)', margin: 0 }}>
                     {t.cuposDisponibles} cupo{t.cuposDisponibles !== 1 ? 's' : ''} disponible{t.cuposDisponibles !== 1 ? 's' : ''}
                   </p>
-                  <button
-                    className="btn btn-primary btn-sm"
-                    style={{ marginTop: '.25rem' }}
-                    onClick={() => { setError(''); setMensajeOk(''); setModalContratar(t) }}
-                    disabled={t.cuposDisponibles === 0}
-                    aria-disabled={t.cuposDisponibles === 0}
-                  >
-                    {t.cuposDisponibles === 0 ? 'Sin cupos' : 'Inscribirse'}
-                  </button>
+                  {t.inscrito ? (
+                    <button
+                      className="btn btn-primary btn-sm"
+                      style={{ marginTop: '.25rem', background: '#16a34a', borderColor: '#16a34a' }}
+                      onClick={() => setVistaTutoria(t._id)}
+                    >
+                      Acceder a la tutoría
+                    </button>
+                  ) : (
+                    <button
+                      className="btn btn-primary btn-sm"
+                      style={{ marginTop: '.25rem' }}
+                      onClick={() => { setError(''); setMensajeOk(''); setModalContratar(t) }}
+                      disabled={t.cuposDisponibles === 0}
+                      aria-disabled={t.cuposDisponibles === 0}
+                    >
+                      {t.cuposDisponibles === 0 ? 'Sin cupos' : 'Inscribirse'}
+                    </button>
+                  )}
                 </div>
               </div>
             ))}

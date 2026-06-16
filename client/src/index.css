@@ -823,3 +823,13 @@ tr:hover td { background: #f8fafc; }
 @media (max-width: 600px) {
   .action-row { flex-wrap: wrap; }
 }
+
+/* ── Lista de materiales ────────────────── */
+.material-list { list-style: none; display: flex; flex-direction: column; gap: .5rem; margin-top: .25rem; }
+.material-item {
+  display: flex; align-items: center; gap: .75rem;
+  padding: .6rem .85rem; border: 1px solid var(--color-border);
+  border-radius: var(--radius); background: var(--color-surface);
+}
+.material-item__name { flex: 1; font-size: .88rem; font-weight: 600; color: var(--color-text); word-break: break-word; }
+.material-item__size { font-size: .78rem; color: var(--color-muted); white-space: nowrap; }

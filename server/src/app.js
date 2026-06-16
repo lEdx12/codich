@@ -23,6 +23,9 @@ app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
 app.use(rateLimiter)
 
+// Archivos subidos (material de tutorías)
+app.use('/uploads', express.static('uploads'))
+
 // Rutas
 app.use('/api/auth',        authRateLimiter, authRoutes)
 app.use('/api/membresia',   membresiaRoutes)

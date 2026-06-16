@@ -7,7 +7,10 @@ import pagoService  from '../services/pagoService.js'
 export const listarTutorias = async (req, res) => {
   const { pagina = 1, limite = 20, instructor } = req.query
   const skip   = (parseInt(pagina) - 1) * parseInt(limite)
-  const filtro = instructor ? { instructor } : { estado: 'activa' }
+  // Un instructor solo puede ver sus propias tutorías, sin importar el query param.
+  const filtro = req.usuario?.rol === 'instructor'
+    ? { instructor: req.usuario.id }
+    : (instructor ? { instructor } : { estado: 'activa' })
   try {
     const [tutorias, total] = await Promise.all([
       Tutoria.find(filtro)
@@ -16,9 +19,17 @@ export const listarTutorias = async (req, res) => {
         .lean(),
       Tutoria.countDocuments(filtro),
     ])
+    // Para diseñadores, marcar qué tutorías ya tienen inscripción activa
+    let inscritasSet = new Set()
+    if (req.usuario?.rol === 'diseñador') {
+      const insc = await Inscripcion.find({ usuario: req.usuario.id, estado: 'activa' }).select('tutoria').lean()
+      inscritasSet = new Set(insc.map(i => i.tutoria.toString()))
+    }
+
     const resultado = tutorias.map(t => ({
       ...t,
       cuposDisponibles: (t.cuposTotal || 0) - (t.cuposOcupados || 0),
+      inscrito: inscritasSet.has(t._id.toString()),
     }))
     res.json({ tutorias: resultado, totalPaginas: Math.ceil(total / parseInt(limite)) || 1, pagina: parseInt(pagina) })
   } catch (err) {
@@ -44,6 +55,32 @@ export const crearTutoria = async (req, res) => {
     res.status(201).json({ mensaje: 'Tutoría creada.', tutoria })
   } catch (err) {
     console.error('Error al crear tutoría:', err)
+    res.status(500).json({ mensaje: 'Error interno.' })
+  }
+}
+
+export const misInscripciones = async (req, res) => {
+  try {
+    const inscripciones = await Inscripcion.find({ usuario: req.usuario.id, estado: 'activa' })
+      .populate({
+        path: 'tutoria',
+        populate: { path: 'instructor', select: 'nombre especialidad' },
+      })
+      .sort({ createdAt: -1 })
+      .lean()
+
+    const tutorias = inscripciones
+      .filter(i => i.tutoria)
+      .map(i => ({
+        ...i.tutoria,
+        cuposDisponibles: (i.tutoria.cuposTotal || 0) - (i.tutoria.cuposOcupados || 0),
+        inscrito: true,
+        fechaInscripcion: i.createdAt,
+      }))
+
+    res.json({ tutorias })
+  } catch (err) {
+    console.error('Error al listar inscripciones:', err)
     res.status(500).json({ mensaje: 'Error interno.' })
   }
 }

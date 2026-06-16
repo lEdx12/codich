@@ -4,10 +4,12 @@ import axiosInstance from '../api/axiosInstance'
 import PagoMembresia from '../components/membresia/PagoMembresia.jsx'
 import CatalogoTutorias from '../components/tutorias/CatalogoTutorias.jsx'
 import BuscadorTutorias from '../components/tutorias/BuscadorTutorias.jsx'
+import MisTutorias from '../components/tutorias/MisTutorias.jsx'
 
 const TABS = [
   { id: 'catalogo',  label: 'Catálogo de tutorías' },
   { id: 'buscar',    label: 'Buscar tutorías' },
+  { id: 'inscritas', label: 'Mis tutorías' },
 ]
 
 const PLAN_LABEL = { mensual: 'Plan Mensual', anual: 'Plan Anual', senior: 'Plan Senior' }
@@ -125,6 +127,7 @@ export default function DashboardDisenador() {
 
       {tab === 'catalogo'  && <CatalogoTutorias />}
       {tab === 'buscar'    && <BuscadorTutorias />}
+      {tab === 'inscritas' && <MisTutorias />}
       {tab === 'membresia' && <PagoMembresia />}
     </div>
   )
