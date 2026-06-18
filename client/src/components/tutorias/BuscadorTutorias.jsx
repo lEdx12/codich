@@ -76,15 +76,34 @@ export default function BuscadorTutorias() {
         <>
           <div className="tutoria-grid">
             {resultados.map(t => (
-              <div key={t._id} className="tutoria-card">
-                <h3>{t.titulo}</h3>
-                <p className="desc">{t.descripcion.length > 100 ? t.descripcion.slice(0, 100) + '…' : t.descripcion}</p>
-                <span className="badge badge-gray" style={{ alignSelf: 'start' }}>{t.categoria}</span>
-                <div className="meta">
-                  <strong>${t.precio.toLocaleString('es-CL')} CLP</strong>
-                  <span>{t.cuposDisponibles} cupos</span>
+              <div key={t._id} className="tutoria-card" style={{ padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                <div style={{
+                  height: 120,
+                  background: t.imagen
+                    ? `url(${t.imagen}) center/cover no-repeat`
+                    : 'linear-gradient(135deg, #1a2a1a 0%, #2c3e2c 60%, #1e3a2e 100%)',
+                  position: 'relative',
+                  flexShrink: 0,
+                }}>
+                  <span className="badge badge-gray" style={{ position: 'absolute', top: 8, left: 8, backdropFilter: 'blur(4px)', background: 'rgba(0,0,0,.55)', color: '#fff', border: 'none' }}>{t.categoria}</span>
+                  {t.cuposDisponibles === 0 && (
+                    <span style={{ position: 'absolute', top: 8, right: 8, background: '#dc2626', color: '#fff', fontSize: '.68rem', fontWeight: 700, padding: '.2rem .5rem', borderRadius: '20px' }}>Sin cupos</span>
+                  )}
                 </div>
-                <a href={`/tutorias/${t._id}`} className="btn btn-outline btn-sm" style={{ textAlign: 'center' }}>Ver detalle →</a>
+                <div style={{ padding: '.9rem', flex: 1, display: 'flex', flexDirection: 'column', gap: '.35rem' }}>
+                  <h3 style={{ fontSize: '.95rem', fontWeight: 700, margin: 0, lineHeight: 1.3 }}>{t.titulo}</h3>
+                  <p className="desc" style={{ fontSize: '.8rem', color: 'var(--color-muted)', flex: 1, margin: 0 }}>
+                    {t.descripcion.length > 100 ? t.descripcion.slice(0, 100) + '…' : t.descripcion}
+                  </p>
+                  {t.instructor?.nombre && (
+                    <p style={{ fontSize: '.75rem', color: 'var(--color-muted)', margin: 0 }}>
+                      Instructor: <strong style={{ color: 'var(--color-text)' }}>{t.instructor.nombre}</strong>
+                    </p>
+                  )}
+                  <p style={{ fontSize: '.75rem', color: 'var(--color-muted)', margin: 0 }}>
+                    {t.cuposDisponibles} cupo{t.cuposDisponibles !== 1 ? 's' : ''} disponible{t.cuposDisponibles !== 1 ? 's' : ''}
+                  </p>
+                </div>
               </div>
             ))}
           </div>

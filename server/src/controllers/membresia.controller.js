@@ -17,14 +17,8 @@ export const iniciarPago = async (req, res) => {
       usuario:  usuarioId,
       monto:    montoPorPlan[plan],
       estado:   'pendiente',
-      concepto: 'membresía',
+      concepto: `membresia:${plan}`,
     })
-
-    await Membresia.findOneAndUpdate(
-      { usuario: usuarioId },
-      { plan, estado: 'pendiente' },
-      { upsert: true, new: true }
-    )
 
     const urlPago = await pagoService.crearSesionPago({
       pagoId:        pago._id.toString(),
@@ -52,15 +46,20 @@ export const webhookPago = async (req, res) => {
       pago.idTransaccion = resultado.flowOrder
       await pago.save()
 
+      const planPago = pago.concepto?.startsWith('membresia:') ? pago.concepto.split(':')[1] : 'mensual'
+      const membresiaExistente = await Membresia.findOne({ usuario: pago.usuario })
       const hoy = new Date()
-      const fin = new Date(hoy)
-      const membresia = await Membresia.findOne({ usuario: pago.usuario })
-      if (membresia.plan === 'mensual') fin.setMonth(fin.getMonth() + 1)
+      const base = (membresiaExistente?.estado === 'activa' && membresiaExistente.fechaFin > hoy)
+        ? new Date(membresiaExistente.fechaFin)
+        : new Date(hoy)
+      const fin = new Date(base)
+      if (planPago === 'mensual') fin.setMonth(fin.getMonth() + 1)
       else fin.setFullYear(fin.getFullYear() + 1)
 
       await Membresia.findOneAndUpdate(
         { usuario: pago.usuario },
-        { estado: 'activa', fechaInicio: hoy, fechaFin: fin }
+        { plan: planPago, estado: 'activa', fechaInicio: membresiaExistente?.fechaInicio || hoy, fechaFin: fin },
+        { upsert: true }
       )
 
       emailService.enviarComprobante({ usuarioId: pago.usuario, pago }).catch(console.error)
@@ -93,16 +92,20 @@ export const simularPago = async (req, res) => {
       pago.idTransaccion = `MOCK-${Date.now()}`
       await pago.save()
 
+      const planPago = pago.concepto?.startsWith('membresia:') ? pago.concepto.split(':')[1] : 'mensual'
+      const membresiaExistente = await Membresia.findOne({ usuario: pago.usuario })
       const hoy = new Date()
-      const fin = new Date(hoy)
-      const membresia = await Membresia.findOne({ usuario: pago.usuario })
-      if (membresia?.plan === 'mensual') fin.setMonth(fin.getMonth() + 1)
+      const base = (membresiaExistente?.estado === 'activa' && membresiaExistente.fechaFin > hoy)
+        ? new Date(membresiaExistente.fechaFin)
+        : new Date(hoy)
+      const fin = new Date(base)
+      if (planPago === 'mensual') fin.setMonth(fin.getMonth() + 1)
       else fin.setFullYear(fin.getFullYear() + 1)
 
       const membresiaActual = await Membresia.findOneAndUpdate(
         { usuario: pago.usuario },
-        { estado: 'activa', fechaInicio: hoy, fechaFin: fin },
-        { new: true }
+        { plan: planPago, estado: 'activa', fechaInicio: membresiaExistente?.fechaInicio || hoy, fechaFin: fin },
+        { upsert: true, new: true }
       )
 
       emailService.enviarComprobante({ usuarioId: pago.usuario, pago }).catch(console.error)
@@ -117,7 +120,6 @@ export const simularPago = async (req, res) => {
 
     pago.estado = 'rechazado'
     await pago.save()
-    await Membresia.findOneAndUpdate({ usuario: pago.usuario }, { estado: 'inactiva' })
     return res.json({
       aprobado: false,
       mensaje:  'Pago rechazado. No se realizó ningún cobro.',

@@ -130,6 +130,9 @@ export const resetPassword = async (req, res) => {
     usuario.passwordHash     = password
     usuario.resetTokenHash   = null
     usuario.resetTokenExpira = null
+    // Al resetear la contraseña se elimina cualquier bloqueo previo por intentos fallidos
+    usuario.intentosFallidos = 0
+    usuario.bloqueadoHasta   = null
     await usuario.save({ validateBeforeSave: false })
 
     res.json({ mensaje: 'Contraseña actualizada exitosamente.' })
